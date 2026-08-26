@@ -1,36 +1,30 @@
 #!/bin/bash
-# פריסה ל-VPS: משיכת ה-bundle העדכני + הפעלה מחדש. עמיד מול קבצים לא-מנוהלים.
+# פריסה ל-VPS: משיכת bundle + הפעלה מחדש נקייה (הריגה לפי פורט + המתנה לשחרור).
 #   curl -sL https://raw.githubusercontent.com/ad4-dev/lh-transfer/main/deploy.sh | bash
 echo "== מושך bundle =="
 cd /root/lh-transfer && git pull -q && echo "✓ bundle עודכן"
 cd /root/Lead_Hunter || { echo "אין /root/Lead_Hunter"; exit 1; }
 
-# שינוי מקומי מנוהל (כגון כוונון sed) — לגיבוי בלבד, לא לדרוס את הקוד החדש
 git stash -q 2>/dev/null || true
-
-# קובץ לא-מנוהל שחוסם את המשיכה — לגבות ולפנות כדי שהגרסה המנוהלת תיכנס
 if [ -e sheets_push.py ] && ! git ls-files --error-unmatch sheets_push.py >/dev/null 2>&1; then
   mkdir -p /root/_vps_bak; mv sheets_push.py /root/_vps_bak/ && echo "↩ גובה sheets_push.py הישן"
 fi
+if git pull -q; then echo "✓ קוד עודכן ל: $(git log --oneline -1)"; else echo "✗ git pull נכשל:"; git pull 2>&1 | tail -5; fi
 
-if git pull -q; then
-  echo "✓ קוד עודכן ל: $(git log --oneline -1)"
-else
-  echo "✗ git pull נכשל:"; git pull 2>&1 | tail -5
-fi
+echo "== מפעיל מחדש (הריגה לפי שם + לפי פורט) =="
+pkill -9 -f 'server.py' 2>/dev/null
+for pid in $(ss -ltnp 2>/dev/null | awk -F'pid=' '/:8733 /{print $2}' | grep -oE '^[0-9]+' | sort -u); do
+  echo "  הורג תהליך $pid שמחזיק את 8733"; kill -9 "$pid" 2>/dev/null
+done
+for i in $(seq 1 20); do ss -ltn 2>/dev/null | grep -q ':8733 ' || break; sleep 1; done
+if ss -ltn 2>/dev/null | grep -q ':8733 '; then echo "⚠ הפורט עדיין תפוס אחרי 20ש'"; fi
 
-echo "== מפעיל מחדש =="
-pkill -9 -f server.py 2>/dev/null; sleep 5
 [ -f .crm_pass ] || echo 'meWXI11PD1ju' > .crm_pass
 chmod 600 .crm_pass
 LEADHUNTER_PASSWORD="$(cat .crm_pass)" nohup venv/bin/python server.py --anytime > /root/server.log 2>&1 &
 code=000
-for i in $(seq 1 12); do
-  sleep 2
-  code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8733/ 2>/dev/null)
-  [ "$code" = "401" ] && break
-done
+for i in $(seq 1 12); do sleep 2; code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8733/ 2>/dev/null); [ "$code" = "401" ] && break; done
 echo "local dashboard: HTTP $code (401=תקין)"
 if [ "$code" != "401" ]; then echo "--- server.log (סוף) ---"; tail -20 /root/server.log; fi
-pgrep -af server.py | head -2
+pgrep -af server.py | head -3
 echo === DEPLOYED ===
