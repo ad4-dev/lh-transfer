@@ -149,8 +149,21 @@ fi
 
 # --------------------------------------------------------------------------- #
 say "7/7  Initial staff accounts"
-if [ -s "$APP_DIR/instance/hr.db" ]; then
-  echo "    the database already exists - skipping the seed."
+# Ask the database how many people it holds. Testing for the file is wrong:
+# step 5 already started the service, and the health check made the app create
+# an empty schema - so the file always exists by now, seeded or not.
+STAFF_COUNT=$(HR_INSTANCE_DIR="$APP_DIR/instance" "$APP_DIR/.venv/bin/python" - <<'PY'
+import os, sqlite3
+db = os.path.join(os.environ["HR_INSTANCE_DIR"], "hr.db")
+try:
+    print(sqlite3.connect(db).execute("SELECT COUNT(*) FROM employees").fetchone()[0])
+except Exception:
+    print(0)
+PY
+)
+
+if [ "${STAFF_COUNT:-0}" -gt 0 ]; then
+  echo "    $STAFF_COUNT accounts already exist - skipping the seed."
   echo "    Add people, or reset a password, from the 'עובדים' screen in the app."
 else
   cd "$APP_DIR"
