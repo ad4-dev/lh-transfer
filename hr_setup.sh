@@ -97,7 +97,26 @@ for candidate in /root/.cloudflared/config.yml /root/.cloudflared/config.yaml \
   [ -f "$candidate" ] && CF_CONFIG="$candidate" && break
 done
 
-if [ -z "$CF_CONFIG" ]; then
+if pgrep -af cloudflared | grep -q -- '--token'; then
+  # A remotely-managed tunnel keeps its ingress in the Cloudflare dashboard,
+  # not in a file on this host. There is nothing here to edit.
+  warn "this is a remotely-managed tunnel (--token), so its ingress lives in the"
+  warn "Cloudflare dashboard, not on this server. Add the hostname there:"
+  cat <<EOF
+
+  one.dash.cloudflare.com -> Networks -> Tunnels
+    -> the tunnel serving crm.ad4.co.il -> Configure -> Public Hostname
+    -> Add a public hostname
+
+      Subdomain : hr
+      Domain    : ad4.co.il
+      Type      : HTTP
+      URL       : localhost:$PORT
+
+  The DNS record is created for you, and crm.ad4.co.il is left untouched.
+
+EOF
+elif [ -z "$CF_CONFIG" ]; then
   warn "no cloudflared config found. Add this ingress rule by hand, above the"
   warn "catch-all 404 rule, then restart cloudflared:"
   cat <<EOF
