@@ -33,7 +33,16 @@ apt-get install -y -qq python3-venv python3-pip git curl
 say "2/7  Fetching the code bundle"
 mkdir -p "$BUNDLE_DIR"
 curl -fsSL "$RAW/hr.bundle" -o "$BUNDLE.new"
-git bundle verify "$BUNDLE.new" >/dev/null
+# 'git bundle verify' needs to run inside a repository, and on a first install
+# there isn't one yet. Check the magic header instead - that catches the failure
+# that actually happens here (a CDN or filter error page saved as the bundle).
+# Real corruption is caught by the clone/pull below, which refuses a bad bundle.
+if ! head -c 32 "$BUNDLE.new" | grep -q 'git bundle'; then
+  echo "the download is not a git bundle:" >&2
+  head -c 200 "$BUNDLE.new" >&2
+  rm -f "$BUNDLE.new"
+  exit 1
+fi
 mv "$BUNDLE.new" "$BUNDLE"
 
 if [ -d "$APP_DIR/.git" ]; then

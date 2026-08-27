@@ -28,7 +28,9 @@ warn() { printf '\033[1;33m[!] %s\033[0m\n' "$*"; }
 say "Fetching the bundle"
 mkdir -p "$BUNDLE_DIR"
 curl -fsSL "$RAW/hr.bundle" -o "$BUNDLE.new"
-git bundle verify "$BUNDLE.new" >/dev/null
+# 'git bundle verify' only works from inside a repository - use the installed
+# one, which is guaranteed to exist by the check above.
+git -C "$APP_DIR" bundle verify "$BUNDLE.new" >/dev/null
 mv "$BUNDLE.new" "$BUNDLE"
 
 BEFORE=$(git -C "$APP_DIR" rev-parse HEAD)
