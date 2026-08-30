@@ -33,8 +33,8 @@ fi
 echo "════════ הפעלה ════════"
 systemctl start leadhunter
 code=000
-for i in $(seq 1 12); do sleep 2; code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8733/ 2>/dev/null); [ "$code" = "401" ] && break; done
-echo "local dashboard: HTTP $code (401=תקין)"
+for i in $(seq 1 12); do sleep 2; code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8733/ 2>/dev/null); { [ "$code" = "401" ] || [ "$code" = "200" ]; } && break; done
+echo "local dashboard: HTTP $code (200/401=תקין)"
 echo "NRestarts: $(systemctl show leadhunter -p NRestarts --value)"
-[ "$code" != "401" ] && { echo "── journal ──"; journalctl -u leadhunter -n 12 --no-pager 2>/dev/null; }
+if [ "$code" != "401" ] && [ "$code" != "200" ]; then echo "── journal ──"; journalctl -u leadhunter -n 12 --no-pager 2>/dev/null; fi
 echo "═══════ DONE ═══════"

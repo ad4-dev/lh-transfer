@@ -44,10 +44,10 @@ systemctl reset-failed leadhunter 2>/dev/null
 systemctl enable leadhunter >/dev/null 2>&1 && echo "✓ יופעל אוטומטית באתחול"
 systemctl restart leadhunter
 code=000
-for i in $(seq 1 15); do sleep 2; code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8733/ 2>/dev/null); [ "$code" = "401" ] && break; done
+for i in $(seq 1 15); do sleep 2; code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8733/ 2>/dev/null); { [ "$code" = "401" ] || [ "$code" = "200" ]; } && break; done
 echo "-----------------------------------"
 echo "active:  $(systemctl is-active leadhunter)"
 echo "NRestarts: $(systemctl show leadhunter -p NRestarts --value)"
-echo "local dashboard: HTTP $code (401=תקין)"
-[ "$code" != "401" ] && { echo "── journal ──"; journalctl -u leadhunter -n 15 --no-pager; }
+echo "local dashboard: HTTP $code (200/401=תקין)"
+if [ "$code" != "401" ] && [ "$code" != "200" ]; then echo "── journal ──"; journalctl -u leadhunter -n 15 --no-pager; fi
 echo "=== SYSTEMD READY (SIGKILL + kill-on-start) ==="

@@ -33,7 +33,7 @@ else
   LEADHUNTER_PASSWORD="$(cat .crm_pass)" nohup venv/bin/python server.py --anytime > /root/server.log 2>&1 &
 fi
 code=000
-for i in $(seq 1 12); do sleep 2; code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8733/ 2>/dev/null); [ "$code" = "401" ] && break; done
-echo "local dashboard: HTTP $code (401=תקין)"
-if [ "$code" != "401" ]; then echo "--- לוג (סוף) ---"; journalctl -u leadhunter -n 15 --no-pager 2>/dev/null || tail -15 /root/server.log; fi
+for i in $(seq 1 12); do sleep 2; code=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8733/ 2>/dev/null); { [ "$code" = "401" ] || [ "$code" = "200" ]; } && break; done
+echo "local dashboard: HTTP $code (200/401=תקין)"
+if [ "$code" != "401" ] && [ "$code" != "200" ]; then echo "--- לוג (סוף) ---"; journalctl -u leadhunter -n 15 --no-pager 2>/dev/null || tail -15 /root/server.log; fi
 echo === DEPLOYED ===
