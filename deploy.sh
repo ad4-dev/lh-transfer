@@ -22,7 +22,11 @@ free_port() {
 
 echo "== מפעיל מחדש =="
 if systemctl list-unit-files 2>/dev/null | grep -q '^leadhunter.service'; then
-  echo "LEADHUNTER_PASSWORD=$(cat .crm_pass 2>/dev/null || echo meWXI11PD1ju)" > .crm_env; chmod 600 .crm_env
+  # שומרים כל שורה אחרת ב-.crm_env (הגדרות ה-SMTP להתראות המייל) —
+  # כתיבה מוחלטת כאן הייתה מוחקת אותן בכל פריסה.
+  KEEP=$(grep -v '^LEADHUNTER_PASSWORD=' .crm_env 2>/dev/null || true)
+  { echo "LEADHUNTER_PASSWORD=$(cat .crm_pass 2>/dev/null || echo meWXI11PD1ju)"
+    [ -n "$KEEP" ] && echo "$KEEP"; } > .crm_env; chmod 600 .crm_env
   systemctl stop leadhunter 2>/dev/null; sleep 2
   free_port                                   # הורג שרתי nohup זרים שנשארו מלפני systemd
   systemctl reset-failed leadhunter 2>/dev/null   # מאפס מונה crash-loop

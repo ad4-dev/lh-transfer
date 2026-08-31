@@ -6,7 +6,10 @@ cd /root/Lead_Hunter || { echo "אין /root/Lead_Hunter"; exit 1; }
 
 [ -f .crm_pass ] || echo 'meWXI11PD1ju' > .crm_pass
 chmod 600 .crm_pass
-echo "LEADHUNTER_PASSWORD=$(cat .crm_pass)" > .crm_env
+# שומרים שורות נוספות שכבר קיימות בקובץ (הגדרות SMTP להתראות המייל)
+KEEP=$(grep -v '^LEADHUNTER_PASSWORD=' .crm_env 2>/dev/null || true)
+{ echo "LEADHUNTER_PASSWORD=$(cat .crm_pass)"
+  [ -n "$KEEP" ] && echo "$KEEP"; } > .crm_env
 chmod 600 .crm_env
 
 echo "== עוצר הכל ביסודיות =="
