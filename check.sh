@@ -45,13 +45,31 @@ EOF
 echo "== scanner state =="
 $PY - <<'EOF'
 import json, os, time
+from collections import Counter
+
 for name, f in (("MTY", "mty_state.json"), ("BS", "server_state.json")):
     if not os.path.exists(f):
         print("  %-4s no state file" % name); continue
     d = json.load(open(f, encoding="utf-8"))
     age = (time.time() - os.path.getmtime(f)) / 3600.0
-    print("  %-4s phase=%s blocks=%s processed=%s  (written %.1fh ago)"
+    print("  %-4s phase=%s blocks=%s processed=%s slowdown=x%s (written %.1fh ago)"
           % (name, d.get("phase"), d.get("block_count"),
-             d.get("processed_total"), age))
+             d.get("processed_total"), d.get("slowdown", 1), age))
+    if name == "MTY":
+        # `finished` הוא המקום שבו סוג בקשה מסיים את ההשלמה. סיום מוקדם
+        # מסביר סורק שנעלם מהכותרת בזמן שהוא בקושי התחיל.
+        print("       pages=%s stop=%s FINISHED=%s ripening=%s done=%s"
+              % (d.get("pages"), d.get("stop_pages"), d.get("finished"),
+                 len(d.get("ripening", {})), len(d.get("done", []))))
+
+# כמה לידים כשירים יש לכל ועדה — זה מה שהדשבורד מציג בפועל
+try:
+    st = json.load(open("leads_store.json", encoding="utf-8"))
+    rows = st.get("leads", st).values()
+    c = Counter((r.get("source") or "bs") for r in rows
+                if not r.get("disqualify_reason"))
+    print("  leads by source: %s" % (dict(c) or "none"))
+except OSError:
+    print("  leads by source: no store")
 EOF
 echo "== END =="
